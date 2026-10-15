@@ -864,9 +864,13 @@
       }
     }
 
+    // 修正：存為新範本時直接讀取最新輸入框的內容
     function saveCurrentAsPreset() {
-      const name = currentDayData.storeInfo.name;
-      if (!name || name === '尚未設定店家') {
+      const storeNameInput = document.getElementById('adminStoreName').value.trim();
+      const deadlineInput = document.getElementById('adminDeadline').value;
+      const notesInput = document.getElementById('adminNotes').value.trim();
+
+      if (!storeNameInput || storeNameInput === '尚未設定店家') {
         alert('請先填寫正確的店家名稱再儲存為範本！');
         return;
       }
@@ -875,9 +879,14 @@
         return;
       }
 
+      // 同步將最新輸入填入當前狀態
+      currentDayData.storeInfo.name = storeNameInput;
+      currentDayData.storeInfo.deadline = deadlineInput || '11:30';
+      currentDayData.storeInfo.notes = notesInput;
+
       const newPreset = {
         id: 'preset_' + Date.now(),
-        name: name,
+        name: storeNameInput,
         deadline: currentDayData.storeInfo.deadline,
         notes: currentDayData.storeInfo.notes,
         menu: JSON.parse(JSON.stringify(currentDayData.menuItems))
@@ -886,7 +895,8 @@
       presetStores.push(newPreset);
       saveDB();
       renderPresetStoreOptions();
-      showToast(`已成功將【${name}】加入常用範本庫`);
+      renderHeaderAndBanner();
+      showToast(`已成功將【${storeNameInput}】加入常用範本庫`);
     }
 
     // --- 智慧文字菜單解析器 (AI / 文字貼上) ---
