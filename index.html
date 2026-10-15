@@ -8,6 +8,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Tesseract.js (用於純前端圖片 OCR 辨識) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- Google Fonts: Noto Sans TC -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -255,7 +257,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           
-          <!-- 左欄：常用店家範本 & 智慧文字匯入 -->
+          <!-- 左欄：常用店家範本 & 圖片OCR / 智慧文字匯入 -->
           <div class="space-y-5">
             
             <!-- 歷史店家範本選擇 -->
@@ -286,7 +288,7 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block text-xs font-semibold text-slate-600 mb-1">店家名稱</label>
-                  <input type="text" id="adminStoreName" placeholder="例如：正宗排骨飯" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                  <input type="text" id="adminStoreName" placeholder="例如：莊記牛肉麵" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <div>
                   <label class="block text-xs font-semibold text-slate-600 mb-1">截止時間</label>
@@ -301,16 +303,42 @@
 
             <hr class="border-slate-100" />
 
-            <!-- 智慧文字貼上 -->
+            <!-- 上傳圖片 OCR 辨識區域 (支援繁體中文) -->
+            <div class="space-y-2 bg-amber-50/50 p-3 rounded-xl border border-amber-200/60">
+              <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="image" class="w-4 h-4 text-orange-500"></i> 3. 圖片辨識菜單 (繁體中文 OCR)
+              </h3>
+              <p class="text-xs text-slate-500">選擇菜單照片，系統將自動進行繁中文字辨識並填入下方</p>
+              
+              <div class="flex items-center gap-2">
+                <input type="file" id="menuImageInput" accept="image/*" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200" />
+                <button onclick="processMenuImage()" id="ocrBtn" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1">
+                  <i data-lucide="scan-line" class="w-3.5 h-3.5"></i> 開始辨識
+                </button>
+              </div>
+
+              <!-- 進度條 -->
+              <div id="ocrStatus" class="hidden text-xs text-amber-700 font-medium space-y-1 mt-1">
+                <div class="flex justify-between">
+                  <span id="ocrStatusText">正在讀取繁體中文字中...</span>
+                  <span id="ocrProgress">0%</span>
+                </div>
+                <div class="w-full bg-amber-200 rounded-full h-1.5 overflow-hidden">
+                  <div id="ocrProgressBar" class="bg-orange-500 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 智慧文字貼上與解析結果 -->
             <div class="space-y-2">
               <div class="flex justify-between items-center">
                 <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <i data-lucide="wand-2" class="w-4 h-4 text-orange-500"></i> 3. AI / 智慧文字貼上解析
+                  <i data-lucide="wand-2" class="w-4 h-4 text-orange-500"></i> 4. 菜單文字解析與修正
                 </h3>
                 <button onclick="loadSampleText()" class="text-xs text-orange-600 hover:underline">範例文字</button>
               </div>
-              <p class="text-xs text-slate-500">複製 Line 訊息或菜單直接貼上（支援：`排骨飯 100元`、`雞腿便當 $110 [便當]`）</p>
-              <textarea id="rawMenuInput" rows="4" placeholder="貼上菜單文字..." class="w-full p-2.5 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500"></textarea>
+              <p class="text-xs text-slate-500">可以直接貼上或微調辨識出的文字（格式：`排骨飯 100元`）</p>
+              <textarea id="rawMenuInput" rows="4" placeholder="貼上或顯示圖片辨識結果..." class="w-full p-2.5 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500"></textarea>
               
               <div class="flex gap-2">
                 <button onclick="parseAndImportMenu()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-1">
@@ -864,7 +892,7 @@
       }
     }
 
-    // 修正：存為新範本時直接讀取最新輸入框的內容
+    // 存為新範本（同步輸入框文字）
     function saveCurrentAsPreset() {
       const storeNameInput = document.getElementById('adminStoreName').value.trim();
       const deadlineInput = document.getElementById('adminDeadline').value;
@@ -879,7 +907,6 @@
         return;
       }
 
-      // 同步將最新輸入填入當前狀態
       currentDayData.storeInfo.name = storeNameInput;
       currentDayData.storeInfo.deadline = deadlineInput || '11:30';
       currentDayData.storeInfo.notes = notesInput;
@@ -899,11 +926,66 @@
       showToast(`已成功將【${storeNameInput}】加入常用範本庫`);
     }
 
+    // --- 圖片菜單 OCR 辨識邏輯 (支援繁體中文 chi_tra + eng) ---
+    async function processMenuImage() {
+      const fileInput = document.getElementById('menuImageInput');
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('請先選擇一張菜單圖片！');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const ocrStatus = document.getElementById('ocrStatus');
+      const ocrStatusText = document.getElementById('ocrStatusText');
+      const ocrProgress = document.getElementById('ocrProgress');
+      const ocrProgressBar = document.getElementById('ocrProgressBar');
+      const ocrBtn = document.getElementById('ocrBtn');
+
+      ocrStatus.classList.remove('hidden');
+      ocrBtn.disabled = true;
+      ocrBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      try {
+        // 設定辨識語言：繁體中文 (chi_tra) + 英文與數字 (eng)
+        const worker = await Tesseract.createWorker('chi_tra+eng', 1, {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              const progress = Math.round(m.progress * 100);
+              ocrStatusText.innerText = `辨識繁體中文文字中... (${progress}%)`;
+              ocrProgress.innerText = `${progress}%`;
+              ocrProgressBar.style.width = `${progress}%`;
+            } else if (m.status) {
+              ocrStatusText.innerText = `準備語言包模組中: ${m.status}`;
+            }
+          }
+        });
+
+        const ret = await worker.recognize(file);
+        await worker.terminate();
+
+        // 將 OCR 文字自動填寫至文字輸入框
+        const rawText = ret.data.text;
+        document.getElementById('rawMenuInput').value = rawText;
+
+        showToast('繁中圖片辨識完成！請確認文字後點擊「解析並覆蓋」');
+      } catch (err) {
+        console.error('OCR 辨識錯誤:', err);
+        alert('辨識過程發生錯誤，請確認網路連線（需下載繁中模組）或圖片清晰度。');
+      } finally {
+        ocrBtn.disabled = false;
+        ocrBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        setTimeout(() => {
+          ocrStatus.classList.add('hidden');
+          ocrProgressBar.style.width = '0%';
+        }, 2500);
+      }
+    }
+
     // --- 智慧文字菜單解析器 (AI / 文字貼上) ---
     function parseAndImportMenu() {
       const rawText = document.getElementById('rawMenuInput').value.trim();
       if (!rawText) {
-        alert('請先貼上菜單文字！');
+        alert('請先貼上或經由圖片辨識產生菜單文字！');
         return;
       }
 
