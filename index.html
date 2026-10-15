@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>公司每日午餐訂餐系統 - Daily Lunch Order</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- 頂部導覽列 Header -->
+  <header class="bg-gradient-to-r from-orange-500 via-amber-500 to-amber-600 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white/90 text-orange-600 p-2 rounded-xl shadow-inner flex items-center justify-center">
+          <i data-lucide="utensils-crossed" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-wide flex items-center gap-2">
+            午餐訂餐小幫手
+            <span id="statusBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold shadow-sm">
+              開放點餐中
+            </span>
+          </h1>
+          <p class="text-xs text-orange-100 flex items-center gap-2" id="headerInfo">
+            <span id="headerDate">日期：----/--/--</span> | 
+            <span id="headerStoreName">目前店家：載入中...</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- 切換模式與日期選擇 -->
+      <div class="flex items-center space-x-2">
+        <button id="toggleModeBtn" onclick="switchMode()" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-xl text-sm font-medium transition flex items-center gap-1.5 backdrop-blur-sm border border-white/20">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+          <span id="modeBtnText">切換至主辦人後台</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主要內容區 Main Content -->
+  <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full">
+
+    <!-- 日期切換列 (跨模式皆可切換觀看) -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-6 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-1.5 text-slate-700 font-bold text-sm">
+          <i data-lucide="calendar" class="w-4 h-4 text-orange-500"></i>
+          <span>當前點餐日期：</span>
+        </div>
+        <input type="date" id="currentDateSelect" onchange="changeActiveDate(this.value)" class="bg-slate-50 border border-slate-300 text-slate-800 font-semibold text-sm rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-orange-500 focus:outline-none" />
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button onclick="setTodayDate()" class="text-xs bg-orange-100 text-orange-700 hover:bg-orange-200 font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 切換至今天
+        </button>
+      </div>
+    </div>
+
+    <!-- 頂部公告與截止時間卡片 -->
+    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-orange-100 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
+      <div class="absolute -top-10 -right-10 w-32 h-32 bg-orange-50 rounded-full blur-xl pointer-events-none"></div>
+      
+      <div class="space-y-1 z-10">
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-orange-100 text-orange-700">今日店家</span>
+          <h2 id="displayStoreName" class="text-lg font-bold text-slate-800">尚未設定店家</h2>
+        </div>
+        <p id="displayNotes" class="text-sm text-slate-500">備註：請記得準時完成點餐！</p>
+      </div>
+
+      <div class="flex items-center gap-3 z-10 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+        <div class="text-left md:text-right">
+          <p class="text-xs text-slate-400">訂餐截止時間</p>
+          <p id="displayDeadline" class="text-base font-bold text-amber-600 flex items-center gap-1">
+            <i data-lucide="clock" class="w-4 h-4 inline"></i> 11:30 AM
+          </p>
+        </div>
+        <div id="quickOrderAction" class="hidden md:block">
+          <button onclick="scrollToSection('orderSection')" class="bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-md transition flex items-center gap-1">
+            <i data-lucide="shopping-cart" class="w-4 h-4"></i> 開始點餐
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 提示訊息 Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+      <div class="bg-slate-800 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-sm">
+        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
+        <span id="toastMsg">操作成功</span>
+      </div>
+    </div>
+
+    <!-- 1. 員工點餐檢視 (Employee View) -->
+    <section id="employeeView" class="space-y-6">
+      
+      <!-- 點餐填寫區與菜單雙欄佈局 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- 左側：菜單瀏覽列表 (2欄寬) -->
+        <div class="lg:col-span-2 space-y-4">
+          <div class="flex justify-between items-center">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="menu" class="w-5 h-5 text-orange-500"></i> 今日菜單列表
+            </h3>
+            <!-- 分類篩選按鈕列 -->
+            <div id="categoryFilter" class="flex gap-1 overflow-x-auto pb-1 text-xs">
+              <!-- 動態生成分類按鈕 -->
+            </div>
+          </div>
+
+          <!-- 菜單卡片網格 -->
+          <div id="menuGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- 菜單品項卡片由 JS 動態渲染 -->
+          </div>
+        </div>
+
+        <!-- 右側：點餐資料填寫與購物車 (1欄寬) -->
+        <div id="orderSection" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col justify-between h-fit sticky top-20">
+          <div class="space-y-4">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2 border-b pb-3">
+              <i data-lucide="shopping-bag" class="w-5 h-5 text-orange-500"></i> 我的點餐資訊
+            </h3>
+
+            <!-- 員工基本資料 -->
+            <div class="space-y-2">
+              <label class="block text-xs font-semibold text-slate-600">訂購人姓名 / 部門 <span class="text-red-500">*</span></label>
+              <input type="text" id="userNameInput" placeholder="例如：研發部 - 王大明" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition" />
+            </div>
+
+            <!-- 已選擇品項列表 -->
+            <div class="space-y-2">
+              <label class="block text-xs font-semibold text-slate-600">已選購餐點</label>
+              <div id="cartItemsList" class="space-y-2 max-h-60 overflow-y-auto pr-1 text-sm">
+                <p class="text-slate-400 text-xs text-center py-6 border border-dashed rounded-xl">尚未選擇餐點，請點擊左側菜單「+」加入</p>
+              </div>
+            </div>
+
+            <!-- 總金額試算 -->
+            <div class="border-t pt-3 flex justify-between items-center text-slate-800">
+              <span class="font-medium text-sm">應付總金額：</span>
+              <span id="cartTotal" class="text-xl font-bold text-orange-600">$ 0</span>
+            </div>
+          </div>
+
+          <!-- 送出按鈕 -->
+          <div class="mt-6 space-y-2">
+            <button id="submitOrderBtn" onclick="submitOrder()" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md transition duration-200 flex items-center justify-center gap-2">
+              <i data-lucide="send" class="w-4 h-4"></i> 確認送出點餐
+            </button>
+            <p class="text-[11px] text-slate-400 text-center">送出後仍可重填姓名覆蓋原訂單</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 下方：即時點餐清單公告板 -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="users" class="w-5 h-5 text-orange-500"></i> 即時訂單明細
+            <span id="orderCountBadge" class="text-xs bg-orange-100 text-orange-700 font-semibold px-2.5 py-0.5 rounded-full">0 人已訂餐</span>
+          </h3>
+          <button onclick="renderAll()" class="text-xs text-slate-500 hover:text-orange-600 flex items-center gap-1">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 重新整理
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 text-xs uppercase font-semibold border-b">
+              <tr>
+                <th class="py-3 px-3">訂購人 / 部門</th>
+                <th class="py-3 px-3">訂購品項與數量</th>
+                <th class="py-3 px-3">特殊需求 / 備註</th>
+                <th class="py-3 px-3 text-right">小計</th>
+                <th class="py-3 px-3 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="liveOrdersTable" class="divide-y divide-slate-100">
+              <!-- 動態生成已訂餐列 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 主辦人 / 後台管理模式 (Admin View) -->
+    <section id="adminView" class="hidden space-y-6">
+      
+      <!-- 快速重置與發起專區 -->
+      <div class="bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl p-5 shadow-md flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <h2 class="text-lg font-bold flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-amber-400"></i> 每日快速更換與重置
+          </h2>
+          <p class="text-xs text-slate-300 mt-1">專為「每天不同菜單」設計！可選擇清空重置，或從歷史範本載入店家。</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="resetTodayData()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-2 rounded-xl transition flex items-center gap-1 shadow-sm">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 清空當日資料重置
+          </button>
+        </div>
+      </div>
+
+      <!-- 後台設定與匯入 -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-6">
+        <div class="flex flex-wrap justify-between items-center border-b pb-4 gap-3">
+          <div>
+            <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="sliders" class="w-6 h-6 text-orange-500"></i> 主辦人後台控制台
+            </h2>
+            <p class="text-xs text-slate-500">管理每日菜單、設定截止時間，並匯出團購統計</p>
+          </div>
+
+          <!-- 開放/關閉訂餐開關 -->
+          <div class="flex items-center space-x-3 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+            <span class="text-xs font-semibold text-slate-600">訂餐開關狀態：</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="orderStatusToggle" class="sr-only peer" onchange="toggleOrderStatus(this.checked)" checked>
+              <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+            <span id="toggleStatusLabel" class="text-xs font-bold text-emerald-600">開放點餐中</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- 左欄：常用店家範本 & 智慧文字匯入 -->
+          <div class="space-y-5">
+            
+            <!-- 歷史店家範本選擇 -->
+            <div class="bg-orange-50/60 rounded-xl p-4 border border-orange-100 space-y-3">
+              <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="bookmark" class="w-4 h-4 text-orange-500"></i> 1. 從「常用店家庫」快速套用
+              </h3>
+              <div class="flex gap-2">
+                <select id="presetStoreSelect" class="flex-1 bg-white border border-slate-300 text-slate-700 text-xs rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                  <option value="">-- 請選擇常用歷史店家 --</option>
+                </select>
+                <button onclick="applyPresetStore()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold px-3 py-2 rounded-lg transition">
+                  帶入菜單
+                </button>
+              </div>
+              <div class="flex justify-end">
+                <button onclick="saveCurrentAsPreset()" class="text-[11px] text-orange-600 hover:underline flex items-center gap-1">
+                  <i data-lucide="plus-circle" class="w-3 h-3"></i> 將目前菜單存為新範本
+                </button>
+              </div>
+            </div>
+
+            <!-- 基本資訊設定 -->
+            <div class="space-y-3">
+              <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="store" class="w-4 h-4 text-orange-500"></i> 2. 當日店家與截止時間
+              </h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">店家名稱</label>
+                  <input type="text" id="adminStoreName" placeholder="例如：正宗排骨飯" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-1">截止時間</label>
+                  <input type="time" id="adminDeadline" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">公告 / 備註</label>
+                <input type="text" id="adminNotes" placeholder="例：附例湯或紅茶，請於備註註明" class="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500" />
+              </div>
+            </div>
+
+            <hr class="border-slate-100" />
+
+            <!-- 智慧文字貼上 -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <i data-lucide="wand-2" class="w-4 h-4 text-orange-500"></i> 3. AI / 智慧文字貼上解析
+                </h3>
+                <button onclick="loadSampleText()" class="text-xs text-orange-600 hover:underline">範例文字</button>
+              </div>
+              <p class="text-xs text-slate-500">複製 Line 訊息或菜單直接貼上（支援：`排骨飯 100元`、`雞腿便當 $110 [便當]`）</p>
+              <textarea id="rawMenuInput" rows="4" placeholder="貼上菜單文字..." class="w-full p-2.5 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500"></textarea>
+              
+              <div class="flex gap-2">
+                <button onclick="parseAndImportMenu()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-1">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i> 解析並覆蓋當日菜單
+                </button>
+                <button onclick="saveAdminSettings()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-4 rounded-lg transition">
+                  儲存設定
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 右欄：目前菜單列表與單項編修 -->
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="list-checks" class="w-4 h-4 text-orange-500"></i> 當日菜單編輯 (<span id="adminMenuItemCount">0</span>)
+              </h3>
+              <button onclick="addNewBlankMenuItem()" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-2.5 py-1 rounded-md font-medium transition flex items-center gap-1">
+                <i data-lucide="plus" class="w-3 h-3"></i> 新增單項
+              </button>
+            </div>
+
+            <div id="adminMenuList" class="space-y-2 max-h-[420px] overflow-y-auto pr-1 border rounded-xl p-2 bg-slate-50">
+              <!-- 動態渲染品項編輯卡片 -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 後台 3：統計與匯出專區 -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex flex-wrap justify-between items-center border-b pb-3 gap-2">
+          <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-5 h-5 text-orange-500"></i> 當日統計與匯出專區
+          </h3>
+          <div class="flex gap-2">
+            <button onclick="copySummaryText()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow-sm transition flex items-center gap-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> 複製 Line 統計簡訊
+            </button>
+            <button onclick="exportToCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow-sm transition flex items-center gap-1">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> 匯出 Excel (CSV)
+            </button>
+            <button onclick="clearAllOrders()" class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center gap-1">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 清空當日訂單
+            </button>
+          </div>
+        </div>
+
+        <!-- 統計數據卡 -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-orange-50 border border-orange-100 rounded-xl p-4 text-center">
+            <p class="text-xs text-orange-600 font-medium">總訂購份數</p>
+            <p id="statTotalItems" class="text-2xl font-bold text-orange-700 mt-1">0 份</p>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-center">
+            <p class="text-xs text-emerald-600 font-medium">總應付金額</p>
+            <p id="statTotalAmount" class="text-2xl font-bold text-emerald-700 mt-1">$ 0</p>
+          </div>
+          <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
+            <p class="text-xs text-blue-600 font-medium">總訂購人數</p>
+            <p id="statTotalPeople" class="text-2xl font-bold text-blue-700 mt-1">0 人</p>
+          </div>
+        </div>
+
+        <!-- 餐點彙總清單 (向店家訂餐用) -->
+        <div>
+          <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-1">
+            <i data-lucide="clipboard-list" class="w-4 h-4 text-orange-500"></i> 餐點彙總清單 (電話/LINE點餐對照)
+          </h4>
+          <div id="itemSummaryList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            <!-- 動態渲染品項總計 -->
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t py-4 text-center text-xs text-slate-400 mt-auto">
+    <p>公司每日午餐訂餐系統 &copy; 資料按日期儲存於本地 LocalStorage</p>
+  </footer>
+
+  <script>
+    // --- 預設店家與範本資料 ---
+    const DEFAULT_PRESET_STORES = [
+      {
+        id: 'preset_1',
+        name: '正宗台式便當',
+        deadline: '11:00',
+        notes: '便當均附飲料或例湯，辣度請備註',
+        menu: [
+          { id: 'p1_1', name: '招牌香酥排骨飯', price: 95, category: '便當' },
+          { id: 'p1_2', name: '脆皮黃金雞腿飯', price: 110, category: '便當' },
+          { id: 'p1_3', name: '古早味滷肉飯', price: 85, category: '便當' },
+          { id: 'p1_4', name: '養生素食便當', price: 90, category: '素食' }
+        ]
+      },
+      {
+        id: 'preset_2',
+        name: '清心手搖飲店',
+        deadline: '13:30',
+        notes: '請註明冰塊甜度 (例:微冰半糖)',
+        menu: [
+          { id: 'p2_1', name: '珍珠奶茶', price: 50, category: '奶茶' },
+          { id: 'p2_2', name: '四季春青茶', price: 35, category: '原萃茶' },
+          { id: 'p2_3', name: '翡翠檸檬綠', price: 55, category: '果茶' }
+        ]
+      }
+    ];
+
+    // --- State 全局狀態 ---
+    let currentMode = 'employee'; // 'employee' | 'admin'
+    let activeDate = getTodayDateStr(); // 格式 YYYY-MM-DD
+    
+    // 全局資料儲存物件結構: { "YYYY-MM-DD": { storeInfo, menuItems, orders } }
+    let dbData = JSON.parse(localStorage.getItem('lunch_system_db')) || {};
+    let presetStores = JSON.parse(localStorage.getItem('lunch_preset_stores')) || DEFAULT_PRESET_STORES;
+
+    // 當前選擇日期的資料快取
+    let currentDayData = {
+      storeInfo: { name: '未設定店家', deadline: '11:30', notes: '請準時點餐', isOpen: true },
+      menuItems: [],
+      orders: []
+    };
+
+    let cart = {}; // 當前購物車
+    let selectedCategory = '全部';
+
+    // --- 初始化頁面 ---
+    window.onload = function() {
+      document.getElementById('currentDateSelect').value = activeDate;
+      loadDayData(activeDate);
+      renderPresetStoreOptions();
+      renderAll();
+    };
+
+    function getTodayDateStr() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // 載入特定日期的資料
+    function loadDayData(dateStr) {
+      if (!dbData[dateStr]) {
+        // 若當日無資料，自動初始為空或帶入第一個範本
+        const defaultStore = presetStores[0] || DEFAULT_PRESET_STORES[0];
+        dbData[dateStr] = {
+          storeInfo: { 
+            name: defaultStore.name, 
+            deadline: defaultStore.deadline, 
+            notes: defaultStore.notes, 
+            isOpen: true 
+          },
+          menuItems: [...defaultStore.menu],
+          orders: []
+        };
+        saveDB();
+      }
+      currentDayData = dbData[dateStr];
+    }
+
+    // 儲存整體 DB
+    function saveDB() {
+      dbData[activeDate] = currentDayData;
+      localStorage.setItem('lunch_system_db', JSON.stringify(dbData));
+      localStorage.setItem('lunch_preset_stores', JSON.stringify(presetStores));
+    }
+
+    // --- 日期切換 ---
+    function changeActiveDate(newDate) {
+      if (!newDate) return;
+      activeDate = newDate;
+      cart = {}; // 清空當前購物車
+      loadDayData(activeDate);
+      loadAdminInputs();
+      renderAll();
+      showToast(`已切換至 ${activeDate} 資料`);
+    }
+
+    function setTodayDate() {
+      const todayStr = getTodayDateStr();
+      document.getElementById('currentDateSelect').value = todayStr;
+      changeActiveDate(todayStr);
+    }
+
+    // --- 全局渲染器 ---
+    function renderAll() {
+      renderHeaderAndBanner();
+      renderCategories();
+      renderMenuGrid();
+      renderCart();
+      renderLiveOrders();
+      renderAdminMenuList();
+      renderSummaryStats();
+      lucide.createIcons();
+    }
+
+    // --- 切換模式 ---
+    function switchMode() {
+      if (currentMode === 'employee') {
+        currentMode = 'admin';
+        document.getElementById('employeeView').classList.add('hidden');
+        document.getElementById('adminView').classList.remove('hidden');
+        document.getElementById('modeBtnText').innerText = '回員工點餐頁';
+        loadAdminInputs();
+        showToast('已進入主辦人後台');
+      } else {
+        currentMode = 'employee';
+        document.getElementById('adminView').classList.add('hidden');
+        document.getElementById('employeeView').classList.remove('hidden');
+        document.getElementById('modeBtnText').innerText = '切換至主辦人後台';
+        showToast('已返回員工點餐頁');
+      }
+    }
+
+    // --- 頂部 Banner 渲染 ---
+    function renderHeaderAndBanner() {
+      const info = currentDayData.storeInfo;
+      document.getElementById('headerDate').innerText = `日期：${activeDate}`;
+      document.getElementById('headerStoreName').innerText = `目前店家：${info.name || '未設定'}`;
+      document.getElementById('displayStoreName').innerText = info.name || '未設定店家';
+      document.getElementById('displayDeadline').innerHTML = `<i data-lucide="clock" class="w-4 h-4 inline"></i> ${info.deadline || '未設定'}`;
+      document.getElementById('displayNotes').innerText = `備註：${info.notes || '無'}`;
+
+      const statusBadge = document.getElementById('statusBadge');
+      const toggleStatusLabel = document.getElementById('toggleStatusLabel');
+      const orderStatusToggle = document.getElementById('orderStatusToggle');
+
+      if (info.isOpen) {
+        statusBadge.className = "text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold shadow-sm";
+        statusBadge.innerText = "開放點餐中";
+        if (toggleStatusLabel) {
+          toggleStatusLabel.innerText = "開放點餐中";
+          toggleStatusLabel.className = "text-xs font-bold text-emerald-600";
+        }
+        if (orderStatusToggle) orderStatusToggle.checked = true;
+      } else {
+        statusBadge.className = "text-xs px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-semibold shadow-sm";
+        statusBadge.innerText = "已截止點餐";
+        if (toggleStatusLabel) {
+          toggleStatusLabel.innerText = "已截止點餐";
+          toggleStatusLabel.className = "text-xs font-bold text-rose-600";
+        }
+        if (orderStatusToggle) orderStatusToggle.checked = false;
+      }
+    }
+
+    // --- 分類與菜單渲染 ---
+    function renderCategories() {
+      const categories = ['全部', ...new Set(currentDayData.menuItems.map(item => item.category || '未分類'))];
+      const container = document.getElementById('categoryFilter');
+      
+      container.innerHTML = categories.map(cat => `
+        <button onclick="setCategory('${cat}')" class="px-3 py-1 rounded-full whitespace-nowrap transition ${selectedCategory === cat ? 'bg-orange-500 text-white font-medium shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}">
+          ${cat}
+        </button>
+      `).join('');
+    }
+
+    function setCategory(cat) {
+      selectedCategory = cat;
+      renderCategories();
+      renderMenuGrid();
+    }
+
+    function renderMenuGrid() {
+      const grid = document.getElementById('menuGrid');
+      const filtered = selectedCategory === '全部' 
+        ? currentDayData.menuItems 
+        : currentDayData.menuItems.filter(item => (item.category || '未分類') === selectedCategory);
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<p class="col-span-full text-center py-8 text-slate-400 text-sm">當日尚無菜單品項，請點擊後台設定</p>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        const cartItem = cart[item.id] || { qty: 0, note: '' };
+        return `
+          <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 hover:border-orange-300 transition flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-start">
+                <span class="text-xs px-2 py-0.5 bg-orange-50 text-orange-600 font-medium rounded">${item.category || '餐點'}</span>
+                <span class="text-base font-bold text-slate-900">$${item.price}</span>
+              </div>
+              <h4 class="font-bold text-slate-800 mt-2 text-base">${item.name}</h4>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              <input type="text" placeholder="備註 (例:少油/去冰)" 
+                value="${cartItem.note}" 
+                onchange="updateCartNote('${item.id}', this.value)"
+                class="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 w-full focus:outline-none focus:bg-white" />
+
+              <div class="flex items-center space-x-1">
+                ${cartItem.qty > 0 ? `
+                  <button onclick="updateCartQty('${item.id}', -1)" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm">-</button>
+                  <span class="w-6 text-center font-semibold text-sm">${cartItem.qty}</span>
+                ` : ''}
+                <button onclick="updateCartQty('${item.id}', 1)" class="w-7 h-7 rounded-lg bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">+</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    // --- 購物車邏輯 ---
+    function updateCartQty(itemId, delta) {
+      if (!currentDayData.storeInfo.isOpen) {
+        alert('當日訂餐已截止！');
+        return;
+      }
+
+      const item = currentDayData.menuItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      if (!cart[itemId]) {
+        cart[itemId] = { item, qty: 0, note: '' };
+      }
+
+      cart[itemId].qty += delta;
+
+      if (cart[itemId].qty <= 0) {
+        delete cart[itemId];
+      }
+
+      renderMenuGrid();
+      renderCart();
+    }
+
+    function updateCartNote(itemId, noteText) {
+      if (cart[itemId]) {
+        cart[itemId].note = noteText;
+      }
+    }
+
+    function renderCart() {
+      const container = document.getElementById('cartItemsList');
+      const keys = Object.keys(cart);
+      let total = 0;
+
+      if (keys.length === 0) {
+        container.innerHTML = `<p class="text-slate-400 text-xs text-center py-6 border border-dashed rounded-xl">尚未選擇餐點，請點擊左側菜單「+」加入</p>`;
+        document.getElementById('cartTotal').innerText = `$ 0`;
+        return;
+      }
+
+      container.innerHTML = keys.map(key => {
+        const entry = cart[key];
+        const subtotal = entry.item.price * entry.qty;
+        total += subtotal;
+
+        return `
+          <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+            <div class="flex-1 pr-2">
+              <p class="font-medium text-slate-800 text-xs">${entry.item.name}</p>
+              <p class="text-[11px] text-slate-400">$${entry.item.price} x ${entry.qty} ${entry.note ? `(${entry.note})` : ''}</p>
+            </div>
+            <div class="text-right flex items-center gap-2">
+              <span class="font-bold text-xs text-slate-700">$${subtotal}</span>
+              <button onclick="removeFromCart('${key}')" class="text-slate-400 hover:text-rose-500 text-xs"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('cartTotal').innerText = `$ ${total}`;
+      lucide.createIcons();
+    }
+
+    function removeFromCart(key) {
+      delete cart[key];
+      renderMenuGrid();
+      renderCart();
+    }
+
+    // 送出點餐
+    function submitOrder() {
+      if (!currentDayData.storeInfo.isOpen) {
+        alert('當日訂餐已截止！');
+        return;
+      }
+
+      const nameInput = document.getElementById('userNameInput').value.trim();
+      if (!nameInput) {
+        alert('請填寫「訂購人姓名 / 部門」！');
+        document.getElementById('userNameInput').focus();
+        return;
+      }
+
+      const cartKeys = Object.keys(cart);
+      if (cartKeys.length === 0) {
+        alert('請至少選擇一項餐點！');
+        return;
+      }
+
+      const itemsOrdered = cartKeys.map(k => ({
+        itemId: cart[k].item.id,
+        name: cart[k].item.name,
+        price: cart[k].item.price,
+        qty: cart[k].qty,
+        note: cart[k].note
+      }));
+
+      const totalAmount = itemsOrdered.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+      const existingIndex = currentDayData.orders.findIndex(o => o.userName === nameInput);
+      if (existingIndex >= 0) {
+        if (!confirm(`已有「${nameInput}」的訂單記錄，是否更新覆蓋該筆訂單？`)) return;
+        currentDayData.orders[existingIndex] = {
+          id: currentDayData.orders[existingIndex].id,
+          userName: nameInput,
+          items: itemsOrdered,
+          totalAmount,
+          time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+        };
+      } else {
+        currentDayData.orders.push({
+          id: Date.now().toString(),
+          userName: nameInput,
+          items: itemsOrdered,
+          totalAmount,
+          time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+        });
+      }
+
+      saveDB();
+      cart = {};
+      renderAll();
+      showToast('訂單已成功送出！');
+    }
+
+    // 渲染即時訂單
+    function renderLiveOrders() {
+      const tbody = document.getElementById('liveOrdersTable');
+      document.getElementById('orderCountBadge').innerText = `${currentDayData.orders.length} 人已訂餐`;
+
+      if (currentDayData.orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">當日尚未有任何人點餐</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = currentDayData.orders.map(order => {
+        const itemsDetail = order.items.map(i => `${i.name} x${i.qty}`).join('、');
+        const notesDetail = order.items.filter(i => i.note).map(i => `${i.name}: ${i.note}`).join('; ');
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-3 font-medium text-slate-800">
+              ${order.userName}
+              <span class="block text-[10px] text-slate-400">${order.time || ''}</span>
+            </td>
+            <td class="py-3 px-3">${itemsDetail}</td>
+            <td class="py-3 px-3 text-xs text-slate-500">${notesDetail || '無'}</td>
+            <td class="py-3 px-3 text-right font-bold text-orange-600">$${order.totalAmount}</td>
+            <td class="py-3 px-3 text-center">
+              <button onclick="deleteOrder('${order.id}')" class="text-slate-400 hover:text-rose-600 transition" title="刪除此訂單">
+                <i data-lucide="trash-2" class="w-4 h-4 inline"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function deleteOrder(orderId) {
+      if (confirm('確定要刪除這筆訂單嗎？')) {
+        currentDayData.orders = currentDayData.orders.filter(o => o.id !== orderId);
+        saveDB();
+        renderAll();
+        showToast('已刪除該筆訂單');
+      }
+    }
+
+    // --- 主辦人後台邏輯與重置 ---
+    function loadAdminInputs() {
+      document.getElementById('adminStoreName').value = currentDayData.storeInfo.name || '';
+      document.getElementById('adminDeadline').value = currentDayData.storeInfo.deadline || '11:30';
+      document.getElementById('adminNotes').value = currentDayData.storeInfo.notes || '';
+    }
+
+    function saveAdminSettings() {
+      currentDayData.storeInfo.name = document.getElementById('adminStoreName').value.trim() || '未指定店家';
+      currentDayData.storeInfo.deadline = document.getElementById('adminDeadline').value || '11:30';
+      currentDayData.storeInfo.notes = document.getElementById('adminNotes').value.trim();
+
+      saveDB();
+      renderAll();
+      showToast('後台設定已儲存');
+    }
+
+    function toggleOrderStatus(isOpen) {
+      currentDayData.storeInfo.isOpen = isOpen;
+      saveDB();
+      renderHeaderAndBanner();
+      showToast(isOpen ? '當日點餐已開放' : '當日點餐已截止');
+    }
+
+    // 一鍵清空當日資料重置
+    function resetTodayData() {
+      if (confirm(`確定要清空 ${activeDate} 的「所有點餐紀錄與菜單」嗎？此操作將讓今天可重新發起。`)) {
+        currentDayData = {
+          storeInfo: { name: '尚未設定店家', deadline: '11:30', notes: '', isOpen: true },
+          menuItems: [],
+          orders: []
+        };
+        saveDB();
+        loadAdminInputs();
+        renderAll();
+        showToast('已清空當日資料，可重新設定菜單');
+      }
+    }
+
+    // --- 常用歷史店家範本邏輯 ---
+    function renderPresetStoreOptions() {
+      const select = document.getElementById('presetStoreSelect');
+      select.innerHTML = `<option value="">-- 請選擇常用歷史店家範本 --</option>` +
+        presetStores.map(p => `<option value="${p.id}">${p.name} (${p.menu.length}個品項)</option>`).join('');
+    }
+
+    function applyPresetStore() {
+      const presetId = document.getElementById('presetStoreSelect').value;
+      if (!presetId) {
+        alert('請先選擇一個歷史店家範本！');
+        return;
+      }
+      const preset = presetStores.find(p => p.id === presetId);
+      if (!preset) return;
+
+      if (confirm(`是否帶入【${preset.name}】的菜單與設定？這將覆蓋當日現有菜單。`)) {
+        currentDayData.storeInfo.name = preset.name;
+        currentDayData.storeInfo.deadline = preset.deadline || '11:30';
+        currentDayData.storeInfo.notes = preset.notes || '';
+        currentDayData.menuItems = JSON.parse(JSON.stringify(preset.menu)); // 深拷貝
+        
+        saveDB();
+        loadAdminInputs();
+        renderAll();
+        showToast(`已帶入【${preset.name}】菜單範本`);
+      }
+    }
+
+    function saveCurrentAsPreset() {
+      const name = currentDayData.storeInfo.name;
+      if (!name || name === '尚未設定店家') {
+        alert('請先填寫正確的店家名稱再儲存為範本！');
+        return;
+      }
+      if (currentDayData.menuItems.length === 0) {
+        alert('當日菜單為空，無法存為範本！');
+        return;
+      }
+
+      const newPreset = {
+        id: 'preset_' + Date.now(),
+        name: name,
+        deadline: currentDayData.storeInfo.deadline,
+        notes: currentDayData.storeInfo.notes,
+        menu: JSON.parse(JSON.stringify(currentDayData.menuItems))
+      };
+
+      presetStores.push(newPreset);
+      saveDB();
+      renderPresetStoreOptions();
+      showToast(`已成功將【${name}】加入常用範本庫`);
+    }
+
+    // --- 智慧文字菜單解析器 (AI / 文字貼上) ---
+    function parseAndImportMenu() {
+      const rawText = document.getElementById('rawMenuInput').value.trim();
+      if (!rawText) {
+        alert('請先貼上菜單文字！');
+        return;
+      }
+
+      const lines = rawText.split('\n');
+      const parsedItems = [];
+
+      lines.forEach((line, idx) => {
+        let trimmed = line.trim();
+        if (!trimmed) return;
+
+        // 辨識 [分類] 或 (分類)
+        let category = '一般品項';
+        const catMatch = trimmed.match(/[\[\(（](.*?)[\]\)）]/);
+        if (catMatch) {
+          category = catMatch[1];
+          trimmed = trimmed.replace(catMatch[0], '').trim();
+        }
+
+        // 辨識價格：支援 "100元"、"$100"、"100"
+        const priceMatch = trimmed.match(/(?:[＄$]\s*)?(\d+)\s*(?:元)?$/);
+        let price = 0;
+        let name = trimmed;
+
+        if (priceMatch) {
+          price = parseInt(priceMatch[1], 10);
+          name = trimmed.replace(priceMatch[0], '').trim();
+        }
+
+        if (name) {
+          parsedItems.push({
+            id: (Date.now() + idx).toString(),
+            name,
+            price,
+            category
+          });
+        }
+      });
+
+      if (parsedItems.length === 0) {
+        alert('無法解析出任何品項，請檢查文字格式。');
+        return;
+      }
+
+      if (confirm(`智慧解析完成！找到 ${parsedItems.length} 個品項。是否取代當日菜單？`)) {
+        currentDayData.menuItems = parsedItems;
+        saveDB();
+        renderAll();
+        showToast('已解析並更新當日菜單！');
+      }
+    }
+
+    function loadSampleText() {
+      document.getElementById('rawMenuInput').value = 
+`招牌台香排骨飯 100元 [主廚便當]
+脆皮大雞腿飯 $110 [主廚便當]
+紅燒牛肉麵 130 [麵食]
+素食鮮蔬便當 90元 [素食]
+古早味冬瓜紅茶 35 [飲料]`;
+      showToast('已載入範例文字');
+    }
+
+    // 渲染後台菜單管理列表
+    function renderAdminMenuList() {
+      const container = document.getElementById('adminMenuList');
+      document.getElementById('adminMenuItemCount').innerText = currentDayData.menuItems.length;
+
+      if (currentDayData.menuItems.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">當日無品項，請從範本帶入或貼上解析</p>`;
+        return;
+      }
+
+      container.innerHTML = currentDayData.menuItems.map((item, index) => `
+        <div class="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center gap-2 text-xs">
+          <input type="text" value="${item.category || ''}" placeholder="分類" onchange="updateMenuItem(${index}, 'category', this.value)" class="w-16 px-1.5 py-1 border rounded text-slate-600" />
+          <input type="text" value="${item.name}" placeholder="品項名稱" onchange="updateMenuItem(${index}, 'name', this.value)" class="flex-1 px-1.5 py-1 border rounded font-medium" />
+          <span class="text-slate-400">$</span>
+          <input type="number" value="${item.price}" placeholder="價格" onchange="updateMenuItem(${index}, 'price', Number(this.value))" class="w-16 px-1.5 py-1 border rounded font-bold text-slate-700" />
+          <button onclick="removeMenuItem(${index})" class="text-slate-400 hover:text-rose-500 p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function updateMenuItem(index, key, value) {
+      currentDayData.menuItems[index][key] = value;
+      saveDB();
+      renderCategories();
+      renderMenuGrid();
+    }
+
+    function removeMenuItem(index) {
+      currentDayData.menuItems.splice(index, 1);
+      saveDB();
+      renderAll();
+    }
+
+    function addNewBlankMenuItem() {
+      currentDayData.menuItems.push({ id: Date.now().toString(), name: '新餐點', price: 100, category: '主食' });
+      saveDB();
+      renderAll();
+    }
+
+    // --- 統計與匯出 ---
+    function renderSummaryStats() {
+      let totalQty = 0;
+      let totalAmount = 0;
+      const itemAgg = {};
+
+      currentDayData.orders.forEach(o => {
+        totalAmount += o.totalAmount;
+        o.items.forEach(i => {
+          totalQty += i.qty;
+          if (!itemAgg[i.name]) itemAgg[i.name] = { qty: 0, price: i.price, notes: [] };
+          itemAgg[i.name].qty += i.qty;
+          if (i.note) itemAgg[i.name].notes.push(`${o.userName}: ${i.note}`);
+        });
+      });
+
+      document.getElementById('statTotalItems').innerText = `${totalQty} 份`;
+      document.getElementById('statTotalAmount').innerText = `$ ${totalAmount}`;
+      document.getElementById('statTotalPeople').innerText = `${currentDayData.orders.length} 人`;
+
+      const summaryContainer = document.getElementById('itemSummaryList');
+      const itemKeys = Object.keys(itemAgg);
+
+      if (itemKeys.length === 0) {
+        summaryContainer.innerHTML = `<p class="text-xs text-slate-400 col-span-full text-center py-2">當日暫無訂單統計</p>`;
+        return;
+      }
+
+      summaryContainer.innerHTML = itemKeys.map(key => {
+        const data = itemAgg[key];
+        return `
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 flex justify-between items-center text-xs">
+            <div>
+              <p class="font-bold text-slate-800">${key}</p>
+              ${data.notes.length > 0 ? `<p class="text-[10px] text-amber-600 mt-0.5">${data.notes.join('; ')}</p>` : ''}
+            </div>
+            <div class="text-right">
+              <span class="text-sm font-extrabold text-orange-600">${data.qty} 份</span>
+              <p class="text-[10px] text-slate-400">共 $${data.qty * data.price}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 複製 Line 統計文字
+    function copySummaryText() {
+      if (currentDayData.orders.length === 0) {
+        alert('當日尚無訂單！');
+        return;
+      }
+
+      const itemAgg = {};
+      let totalAmount = 0;
+      let totalQty = 0;
+
+      currentDayData.orders.forEach(o => {
+        totalAmount += o.totalAmount;
+        o.items.forEach(i => {
+          totalQty += i.qty;
+          if (!itemAgg[i.name]) itemAgg[i.name] = { qty: 0, notes: [] };
+          itemAgg[i.name].qty += i.qty;
+          if (i.note) itemAgg[i.name].notes.push(`${o.userName}(${i.note})`);
+        });
+      });
+
+      let text = `🍱【${currentDayData.storeInfo.name}】訂餐結算 (${activeDate})\n`;
+      text += `-------------------------\n`;
+      text += `【點餐數量彙總】\n`;
+      
+      Object.keys(itemAgg).forEach(name => {
+        const item = itemAgg[name];
+        text += `• ${name} x ${item.qty}`;
+        if (item.notes.length > 0) text += ` [備註: ${item.notes.join(', ')}]`;
+        text += `\n`;
+      });
+
+      text += `-------------------------\n`;
+      text += `總計：${totalQty} 份 | 總金額：$${totalAmount} 元\n\n`;
+      text += `【個人明細】\n`;
+
+      currentDayData.orders.forEach(o => {
+        const details = o.items.map(i => `${i.name}x${i.qty}`).join(',');
+        text += `${o.userName}：${details} ($${o.totalAmount})\n`;
+      });
+
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('已複製 LINE 統計簡訊至剪貼簿！');
+      }).catch(() => alert('複製失敗，請手動複製。'));
+    }
+
+    // 匯出 CSV Excel 檔
+    function exportToCSV() {
+      if (currentDayData.orders.length === 0) {
+        alert('當日無訂單可匯出！');
+        return;
+      }
+
+      let csv = "\uFEFF"; // UTF-8 BOM
+      csv += "日期,訂購人,餐點名稱,單價,數量,小計,特殊備註,點餐時間\n";
+
+      currentDayData.orders.forEach(o => {
+        o.items.forEach(i => {
+          const row = [
+            `"${activeDate}"`,
+            `"${o.userName}"`,
+            `"${i.name}"`,
+            i.price,
+            i.qty,
+            i.price * i.qty,
+            `"${i.note || ''}"`,
+            `"${o.time || ''}"`
+          ];
+          csv += row.join(",") + "\n";
+        });
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${activeDate}_${currentDayData.storeInfo.name}_訂餐統計.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('已開始下載 Excel (CSV) 檔');
+    }
+
+    function clearAllOrders() {
+      if (confirm(`確定要清空 ${activeDate} 的所有訂單嗎？`)) {
+        currentDayData.orders = [];
+        saveDB();
+        renderAll();
+        showToast('已清空當日所有訂單');
+      }
+    }
+
+    function scrollToSection(id) {
+      document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
