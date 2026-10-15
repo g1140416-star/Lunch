@@ -302,4 +302,928 @@
                 </div>
 
                 <div>
-                  <label class="block text-[11px] font-semibold text-purple-800 mb-1">上傳菜單圖片：</
+                  <label class="block text-[11px] font-semibold text-purple-800 mb-1">上傳菜單圖片：</label>
+                  <input type="file" id="menuImageInput" accept="image/*" class="block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200" />
+                </div>
+
+                <button onclick="processMenuImageWithAI()" id="aiBtn" class="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-1.5 shadow-sm mt-2">
+                  <i data-lucide="bot" class="w-4 h-4"></i> 用 AI 辨識圖片並自動導入菜單
+                </button>
+              </div>
+
+              <div id="aiStatus" class="hidden text-xs text-purple-700 font-medium text-center py-1">
+                <span id="aiStatusText">AI 正在仔細分析菜單結構中，請稍候...</span>
+              </div>
+            </div>
+
+            <!-- 智慧文字貼上與解析結果 -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <i data-lucide="wand-2" class="w-4 h-4 text-orange-500"></i> 4. 菜單文字解析與修正
+                </h3>
+                <button onclick="loadSampleText()" class="text-xs text-orange-600 hover:underline">範例文字</button>
+              </div>
+              <p class="text-xs text-slate-500">手動貼上或查看 AI 辨識後的文字結果</p>
+              <textarea id="rawMenuInput" rows="4" placeholder="貼上或顯示圖片辨識結果..." class="w-full p-2.5 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-500"></textarea>
+              
+              <div class="flex gap-2">
+                <button onclick="parseAndImportMenu()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-1">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i> 解析並覆蓋當日菜單
+                </button>
+                <button onclick="saveAdminSettings()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-2 px-4 rounded-lg transition">
+                  儲存設定
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 右欄：目前菜單列表與單項編修 -->
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                <i data-lucide="list-checks" class="w-4 h-4 text-orange-500"></i> 當日菜單編輯 (<span id="adminMenuItemCount">0</span>)
+              </h3>
+              <button onclick="addNewBlankMenuItem()" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 px-2.5 py-1 rounded-md font-medium transition flex items-center gap-1">
+                <i data-lucide="plus" class="w-3 h-3"></i> 新增單項
+              </button>
+            </div>
+
+            <div id="adminMenuList" class="space-y-2 max-h-[420px] overflow-y-auto pr-1 border rounded-xl p-2 bg-slate-50"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 後台 3：統計與匯出專區 -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex flex-wrap justify-between items-center border-b pb-3 gap-2">
+          <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-5 h-5 text-orange-500"></i> 當日統計與匯出專區
+          </h3>
+          <div class="flex gap-2">
+            <button onclick="copySummaryText()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow-sm transition flex items-center gap-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> 複製 Line 統計簡訊
+            </button>
+            <button onclick="exportToCSV()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow-sm transition flex items-center gap-1">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> 匯出 Excel (CSV)
+            </button>
+            <button onclick="clearAllOrders()" class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-semibold py-2 px-3 rounded-lg transition flex items-center gap-1">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 清空當日訂單
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-orange-50 border border-orange-100 rounded-xl p-4 text-center">
+            <p class="text-xs text-orange-600 font-medium">總訂購份數</p>
+            <p id="statTotalItems" class="text-2xl font-bold text-orange-700 mt-1">0 份</p>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-center">
+            <p class="text-xs text-emerald-600 font-medium">總應付金額</p>
+            <p id="statTotalAmount" class="text-2xl font-bold text-emerald-700 mt-1">$ 0</p>
+          </div>
+          <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
+            <p class="text-xs text-blue-600 font-medium">總訂購人數</p>
+            <p id="statTotalPeople" class="text-2xl font-bold text-blue-700 mt-1">0 人</p>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-1">
+            <i data-lucide="clipboard-list" class="w-4 h-4 text-orange-500"></i> 餐點彙總清單 (電話/LINE點餐對照)
+          </h4>
+          <div id="itemSummaryList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2"></div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="bg-white border-t py-4 text-center text-xs text-slate-400 mt-auto">
+    <p>公司每日午餐訂餐系統 &copy; 資料按日期儲存於本地 LocalStorage</p>
+  </footer>
+
+  <script>
+    const DEFAULT_PRESET_STORES = [
+      {
+        id: 'preset_1',
+        name: '正宗台式便當',
+        deadline: '11:00',
+        notes: '便當均附飲料或例湯，辣度請備註',
+        menu: [
+          { id: 'p1_1', name: '招牌香酥排骨飯', price: 95, category: '便當' },
+          { id: 'p1_2', name: '脆皮黃金雞腿飯', price: 110, category: '便當' },
+          { id: 'p1_3', name: '古早味滷肉飯', price: 85, category: '便當' },
+          { id: 'p1_4', name: '養生素食便當', price: 90, category: '素食' }
+        ]
+      }
+    ];
+
+    let currentMode = 'employee';
+    let activeDate = getTodayDateStr();
+    
+    let dbData = JSON.parse(localStorage.getItem('lunch_system_db')) || {};
+    let presetStores = JSON.parse(localStorage.getItem('lunch_preset_stores')) || DEFAULT_PRESET_STORES;
+
+    let currentDayData = {
+      storeInfo: { name: '未設定店家', deadline: '11:30', notes: '請準時點餐', isOpen: true },
+      menuItems: [],
+      orders: []
+    };
+
+    let cart = {};
+    let selectedCategory = '全部';
+
+    window.onload = function() {
+      document.getElementById('currentDateSelect').value = activeDate;
+      const savedApiKey = localStorage.getItem('openai_api_key') || '';
+      if (document.getElementById('openaiApiKey')) document.getElementById('openaiApiKey').value = savedApiKey;
+      loadDayData(activeDate);
+      renderPresetStoreOptions();
+      renderAll();
+    };
+
+    function getTodayDateStr() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function loadDayData(dateStr) {
+      if (!dbData[dateStr]) {
+        const defaultStore = presetStores[0] || DEFAULT_PRESET_STORES[0];
+        dbData[dateStr] = {
+          storeInfo: { 
+            name: defaultStore.name, 
+            deadline: defaultStore.deadline, 
+            notes: defaultStore.notes, 
+            isOpen: true 
+          },
+          menuItems: [...defaultStore.menu],
+          orders: []
+        };
+        saveDB();
+      }
+      currentDayData = dbData[dateStr];
+    }
+
+    function saveDB() {
+      dbData[activeDate] = currentDayData;
+      localStorage.setItem('lunch_system_db', JSON.stringify(dbData));
+      localStorage.setItem('lunch_preset_stores', JSON.stringify(presetStores));
+    }
+
+    function changeActiveDate(newDate) {
+      if (!newDate) return;
+      activeDate = newDate;
+      cart = {};
+      loadDayData(activeDate);
+      loadAdminInputs();
+      renderAll();
+      showToast(`已切換至 ${activeDate} 資料`);
+    }
+
+    function setTodayDate() {
+      const todayStr = getTodayDateStr();
+      document.getElementById('currentDateSelect').value = todayStr;
+      changeActiveDate(todayStr);
+    }
+
+    function renderAll() {
+      renderHeaderAndBanner();
+      renderCategories();
+      renderMenuGrid();
+      renderCart();
+      renderLiveOrders();
+      renderAdminMenuList();
+      renderSummaryStats();
+      lucide.createIcons();
+    }
+
+    function switchMode() {
+      if (currentMode === 'employee') {
+        currentMode = 'admin';
+        document.getElementById('employeeView').classList.add('hidden');
+        document.getElementById('adminView').classList.remove('hidden');
+        document.getElementById('modeBtnText').innerText = '回員工點餐頁';
+        loadAdminInputs();
+        showToast('已進入主辦人後台');
+      } else {
+        currentMode = 'employee';
+        document.getElementById('adminView').classList.add('hidden');
+        document.getElementById('employeeView').classList.remove('hidden');
+        document.getElementById('modeBtnText').innerText = '切換至主辦人後台';
+        showToast('已返回員工點餐頁');
+      }
+    }
+
+    function renderHeaderAndBanner() {
+      const info = currentDayData.storeInfo;
+      document.getElementById('headerDate').innerText = `日期：${activeDate}`;
+      document.getElementById('headerStoreName').innerText = `目前店家：${info.name || '未設定'}`;
+      document.getElementById('displayStoreName').innerText = info.name || '未設定店家';
+      document.getElementById('displayDeadline').innerHTML = `<i data-lucide="clock" class="w-4 h-4 inline"></i> ${info.deadline || '未設定'}`;
+      document.getElementById('displayNotes').innerText = `備註：${info.notes || '無'}`;
+
+      const statusBadge = document.getElementById('statusBadge');
+      const toggleStatusLabel = document.getElementById('toggleStatusLabel');
+      const orderStatusToggle = document.getElementById('orderStatusToggle');
+
+      if (info.isOpen) {
+        statusBadge.className = "text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold shadow-sm";
+        statusBadge.innerText = "開放點餐中";
+        if (toggleStatusLabel) {
+          toggleStatusLabel.innerText = "開放點餐中";
+          toggleStatusLabel.className = "text-xs font-bold text-emerald-600";
+        }
+        if (orderStatusToggle) orderStatusToggle.checked = true;
+      } else {
+        statusBadge.className = "text-xs px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-semibold shadow-sm";
+        statusBadge.innerText = "已截止點餐";
+        if (toggleStatusLabel) {
+          toggleStatusLabel.innerText = "已截止點餐";
+          toggleStatusLabel.className = "text-xs font-bold text-rose-600";
+        }
+        if (orderStatusToggle) orderStatusToggle.checked = false;
+      }
+    }
+
+    function renderCategories() {
+      const categories = ['全部', ...new Set(currentDayData.menuItems.map(item => item.category || '未分類'))];
+      const container = document.getElementById('categoryFilter');
+      
+      container.innerHTML = categories.map(cat => `
+        <button onclick="setCategory('${cat}')" class="px-3 py-1 rounded-full whitespace-nowrap transition ${selectedCategory === cat ? 'bg-orange-500 text-white font-medium shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}">
+          ${cat}
+        </button>
+      `).join('');
+    }
+
+    function setCategory(cat) {
+      selectedCategory = cat;
+      renderCategories();
+      renderMenuGrid();
+    }
+
+    function renderMenuGrid() {
+      const grid = document.getElementById('menuGrid');
+      const filtered = selectedCategory === '全部' 
+        ? currentDayData.menuItems 
+        : currentDayData.menuItems.filter(item => (item.category || '未分類') === selectedCategory);
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<p class="col-span-full text-center py-8 text-slate-400 text-sm">當日尚無菜單品項，請點擊後台設定</p>`;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        const cartItem = cart[item.id] || { qty: 0, note: '' };
+        return `
+          <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 hover:border-orange-300 transition flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-start">
+                <span class="text-xs px-2 py-0.5 bg-orange-50 text-orange-600 font-medium rounded">${item.category || '餐點'}</span>
+                <span class="text-base font-bold text-slate-900">$${item.price}</span>
+              </div>
+              <h4 class="font-bold text-slate-800 mt-2 text-base">${item.name}</h4>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              <input type="text" placeholder="備註 (例:少油/去冰)" 
+                value="${cartItem.note}" 
+                onchange="updateCartNote('${item.id}', this.value)"
+                class="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 w-full focus:outline-none focus:bg-white" />
+
+              <div class="flex items-center space-x-1">
+                ${cartItem.qty > 0 ? `
+                  <button onclick="updateCartQty('${item.id}', -1)" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-sm">-</button>
+                  <span class="w-6 text-center font-semibold text-sm">${cartItem.qty}</span>
+                ` : ''}
+                <button onclick="updateCartQty('${item.id}', 1)" class="w-7 h-7 rounded-lg bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">+</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function updateCartQty(itemId, delta) {
+      if (!currentDayData.storeInfo.isOpen) {
+        alert('當日訂餐已截止！');
+        return;
+      }
+
+      const item = currentDayData.menuItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      if (!cart[itemId]) {
+        cart[itemId] = { item, qty: 0, note: '' };
+      }
+
+      cart[itemId].qty += delta;
+
+      if (cart[itemId].qty <= 0) {
+        delete cart[itemId];
+      }
+
+      renderMenuGrid();
+      renderCart();
+    }
+
+    function updateCartNote(itemId, noteText) {
+      if (cart[itemId]) {
+        cart[itemId].note = noteText;
+      }
+    }
+
+    function renderCart() {
+      const container = document.getElementById('cartItemsList');
+      const keys = Object.keys(cart);
+      let total = 0;
+
+      if (keys.length === 0) {
+        container.innerHTML = `<p class="text-slate-400 text-xs text-center py-6 border border-dashed rounded-xl">尚未選擇餐點，請點擊左側菜單「+」加入</p>`;
+        document.getElementById('cartTotal').innerText = `$ 0`;
+        return;
+      }
+
+      container.innerHTML = keys.map(key => {
+        const entry = cart[key];
+        const subtotal = entry.item.price * entry.qty;
+        total += subtotal;
+
+        return `
+          <div class="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+            <div class="flex-1 pr-2">
+              <p class="font-medium text-slate-800 text-xs">${entry.item.name}</p>
+              <p class="text-[11px] text-slate-400">$${entry.item.price} x ${entry.qty} ${entry.note ? `(${entry.note})` : ''}</p>
+            </div>
+            <div class="text-right flex items-center gap-2">
+              <span class="font-bold text-xs text-slate-700">$${subtotal}</span>
+              <button onclick="removeFromCart('${key}')" class="text-slate-400 hover:text-rose-500 text-xs"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('cartTotal').innerText = `$ ${total}`;
+      lucide.createIcons();
+    }
+
+    function removeFromCart(key) {
+      delete cart[key];
+      renderMenuGrid();
+      renderCart();
+    }
+
+    function submitOrder() {
+      if (!currentDayData.storeInfo.isOpen) {
+        alert('當日訂餐已截止！');
+        return;
+      }
+
+      const nameInput = document.getElementById('userNameInput').value.trim();
+      if (!nameInput) {
+        alert('請填寫「訂購人姓名 / 部門」！');
+        document.getElementById('userNameInput').focus();
+        return;
+      }
+
+      const cartKeys = Object.keys(cart);
+      if (cartKeys.length === 0) {
+        alert('請至少選擇一項餐點！');
+        return;
+      }
+
+      const itemsOrdered = cartKeys.map(k => ({
+        itemId: cart[k].item.id,
+        name: cart[k].item.name,
+        price: cart[k].item.price,
+        qty: cart[k].qty,
+        note: cart[k].note
+      }));
+
+      const totalAmount = itemsOrdered.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+      const existingIndex = currentDayData.orders.findIndex(o => o.userName === nameInput);
+      if (existingIndex >= 0) {
+        if (!confirm(`已有「${nameInput}」的訂單記錄，是否更新覆蓋該筆訂單？`)) return;
+        currentDayData.orders[existingIndex] = {
+          id: currentDayData.orders[existingIndex].id,
+          userName: nameInput,
+          items: itemsOrdered,
+          totalAmount,
+          time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+        };
+      } else {
+        currentDayData.orders.push({
+          id: Date.now().toString(),
+          userName: nameInput,
+          items: itemsOrdered,
+          totalAmount,
+          time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+        });
+      }
+
+      saveDB();
+      cart = {};
+      renderAll();
+      showToast('訂單已成功送出！');
+    }
+
+    function renderLiveOrders() {
+      const tbody = document.getElementById('liveOrdersTable');
+      document.getElementById('orderCountBadge').innerText = `${currentDayData.orders.length} 人已訂餐`;
+
+      if (currentDayData.orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400 text-xs">當日尚未有任何人點餐</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = currentDayData.orders.map(order => {
+        const itemsDetail = order.items.map(i => `${i.name} x${i.qty}`).join('、');
+        const notesDetail = order.items.filter(i => i.note).map(i => `${i.name}: ${i.note}`).join('; ');
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-3 font-medium text-slate-800">
+              ${order.userName}
+              <span class="block text-[10px] text-slate-400">${order.time || ''}</span>
+            </td>
+            <td class="py-3 px-3">${itemsDetail}</td>
+            <td class="py-3 px-3 text-xs text-slate-500">${notesDetail || '無'}</td>
+            <td class="py-3 px-3 text-right font-bold text-orange-600">$${order.totalAmount}</td>
+            <td class="py-3 px-3 text-center">
+              <button onclick="deleteOrder('${order.id}')" class="text-slate-400 hover:text-rose-600 transition" title="刪除此訂單">
+                <i data-lucide="trash-2" class="w-4 h-4 inline"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function deleteOrder(orderId) {
+      if (confirm('確定要刪除這筆訂單嗎？')) {
+        currentDayData.orders = currentDayData.orders.filter(o => o.id !== orderId);
+        saveDB();
+        renderAll();
+        showToast('已刪除該筆訂單');
+      }
+    }
+
+    function loadAdminInputs() {
+      document.getElementById('adminStoreName').value = currentDayData.storeInfo.name || '';
+      document.getElementById('adminDeadline').value = currentDayData.storeInfo.deadline || '11:30';
+      document.getElementById('adminNotes').value = currentDayData.storeInfo.notes || '';
+    }
+
+    function saveAdminSettings() {
+      currentDayData.storeInfo.name = document.getElementById('adminStoreName').value.trim() || '未指定店家';
+      currentDayData.storeInfo.deadline = document.getElementById('adminDeadline').value || '11:30';
+      currentDayData.storeInfo.notes = document.getElementById('adminNotes').value.trim();
+
+      saveDB();
+      renderAll();
+      showToast('後台設定已儲存');
+    }
+
+    function toggleOrderStatus(isOpen) {
+      currentDayData.storeInfo.isOpen = isOpen;
+      saveDB();
+      renderHeaderAndBanner();
+      showToast(isOpen ? '當日點餐已開放' : '當日點餐已截止');
+    }
+
+    function resetTodayData() {
+      if (confirm(`確定要清空 ${activeDate} 的「所有點餐紀錄與菜單」嗎？此操作將讓今天可重新發起。`)) {
+        currentDayData = {
+          storeInfo: { name: '尚未設定店家', deadline: '11:30', notes: '', isOpen: true },
+          menuItems: [],
+          orders: []
+        };
+        saveDB();
+        loadAdminInputs();
+        renderAll();
+        showToast('已清空當日資料，可重新設定菜單');
+      }
+    }
+
+    function renderPresetStoreOptions() {
+      const select = document.getElementById('presetStoreSelect');
+      select.innerHTML = `<option value="">-- 請選擇常用歷史店家範本 --</option>` +
+        presetStores.map(p => `<option value="${p.id}">${p.name} (${p.menu.length}個品項)</option>`).join('');
+    }
+
+    function applyPresetStore() {
+      const presetId = document.getElementById('presetStoreSelect').value;
+      if (!presetId) {
+        alert('請先選擇一個歷史店家範本！');
+        return;
+      }
+      const preset = presetStores.find(p => p.id === presetId);
+      if (!preset) return;
+
+      if (confirm(`是否帶入【${preset.name}】的菜單與設定？這將覆蓋當日現有菜單。`)) {
+        currentDayData.storeInfo.name = preset.name;
+        currentDayData.storeInfo.deadline = preset.deadline || '11:30';
+        currentDayData.storeInfo.notes = preset.notes || '';
+        currentDayData.menuItems = JSON.parse(JSON.stringify(preset.menu));
+        
+        saveDB();
+        loadAdminInputs();
+        renderAll();
+        showToast(`已帶入【${preset.name}】菜單範本`);
+      }
+    }
+
+    function saveCurrentAsPreset() {
+      const storeNameInput = document.getElementById('adminStoreName').value.trim();
+      const deadlineInput = document.getElementById('adminDeadline').value;
+      const notesInput = document.getElementById('adminNotes').value.trim();
+
+      if (!storeNameInput || storeNameInput === '尚未設定店家') {
+        alert('請先填寫正確的店家名稱再儲存為範本！');
+        return;
+      }
+      if (currentDayData.menuItems.length === 0) {
+        alert('當日菜單為空，無法存為範本！');
+        return;
+      }
+
+      currentDayData.storeInfo.name = storeNameInput;
+      currentDayData.storeInfo.deadline = deadlineInput || '11:30';
+      currentDayData.storeInfo.notes = notesInput;
+
+      const newPreset = {
+        id: 'preset_' + Date.now(),
+        name: storeNameInput,
+        deadline: currentDayData.storeInfo.deadline,
+        notes: currentDayData.storeInfo.notes,
+        menu: JSON.parse(JSON.stringify(currentDayData.menuItems))
+      };
+
+      presetStores.push(newPreset);
+      saveDB();
+      renderPresetStoreOptions();
+      renderHeaderAndBanner();
+      showToast(`已成功將【${storeNameInput}】加入常用範本庫`);
+    }
+
+    // --- 使用 OpenAI GPT-4o Vision 進行超精準 AI 菜單解析 ---
+    async function processMenuImageWithAI() {
+      const apiKey = document.getElementById('openaiApiKey').value.trim();
+      const fileInput = document.getElementById('menuImageInput');
+
+      if (!apiKey) {
+        alert('請先填寫 OpenAI API Key！');
+        document.getElementById('openaiApiKey').focus();
+        return;
+      }
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('請選擇菜單圖片！');
+        return;
+      }
+
+      localStorage.setItem('openai_api_key', apiKey);
+      const file = fileInput.files[0];
+
+      const aiStatus = document.getElementById('aiStatus');
+      const aiBtn = document.getElementById('aiBtn');
+
+      aiStatus.classList.remove('hidden');
+      aiBtn.disabled = true;
+      aiBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      try {
+        // 將圖片轉為 Base64
+        const base64Image = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+          reader.readAsDataURL(file);
+        });
+
+        // 呼叫 OpenAI Vision API
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: `請詳細分析這張菜單圖片，將圖片中的所有餐點名稱與金額整理出來。
+如果菜單上有區分大/小份，請分開列出，例如：
+牛肉麵(大) 170元
+牛肉麵(小) 150元
+
+如果有分類（例如麵類、湯類、小菜），請使用方括號標示分類，格式如下：
+牛肉麵(大) 170元 [麵類]
+海帶 30元 [小菜]
+
+請直接輸出最終的文字列表，不要有額外的開頭或結尾解釋。`
+                  },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: base64Image
+                    }
+                  }
+                ]
+              }
+            ],
+            max_tokens: 1500
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          throw new Error(data.error.message || 'API 呼叫失敗');
+        }
+
+        const aiOutputText = data.choices[0].message.content.trim();
+        document.getElementById('rawMenuInput').value = aiOutputText;
+
+        showToast('AI 辨識完畢！正在自動解析菜單...');
+        parseAndImportMenu(); // 自動觸發解析並帶入
+
+      } catch (err) {
+        console.error('AI 辨識失敗:', err);
+        alert('AI 辨識失敗：' + err.message);
+      } finally {
+        aiBtn.disabled = false;
+        aiBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        aiStatus.classList.add('hidden');
+      }
+    }
+
+    function parseAndImportMenu() {
+      const rawText = document.getElementById('rawMenuInput').value.trim();
+      if (!rawText) {
+        alert('請先貼上或經由圖片辨識產生菜單文字！');
+        return;
+      }
+
+      const lines = rawText.split('\n');
+      const parsedItems = [];
+
+      lines.forEach((line, idx) => {
+        let trimmed = line.trim();
+        if (!trimmed) return;
+
+        let category = '一般品項';
+        const catMatch = trimmed.match(/[\[\(（](.*?)[\]\)）]/);
+        if (catMatch) {
+          category = catMatch[1];
+          trimmed = trimmed.replace(catMatch[0], '').trim();
+        }
+
+        const priceMatch = trimmed.match(/(?:[＄$]\s*)?(\d+)\s*(?:元)?$/);
+        let price = 0;
+        let name = trimmed;
+
+        if (priceMatch) {
+          price = parseInt(priceMatch[1], 10);
+          name = trimmed.replace(priceMatch[0], '').trim();
+        }
+
+        if (name) {
+          parsedItems.push({
+            id: (Date.now() + idx).toString(),
+            name,
+            price,
+            category
+          });
+        }
+      });
+
+      if (parsedItems.length === 0) {
+        alert('無法解析出任何品項，請檢查文字格式。');
+        return;
+      }
+
+      currentDayData.menuItems = parsedItems;
+      saveDB();
+      renderAll();
+      showToast('已解析並更新當日菜單！');
+    }
+
+    function loadSampleText() {
+      document.getElementById('rawMenuInput').value = 
+`招牌台香排骨飯 100元 [主廚便當]
+脆皮大雞腿飯 $110 [主廚便當]
+紅燒牛肉麵 130 [麵食]
+素食鮮蔬便當 90元 [素食]
+古早味冬瓜紅茶 35 [飲料]`;
+      showToast('已載入範例文字');
+    }
+
+    function renderAdminMenuList() {
+      const container = document.getElementById('adminMenuList');
+      document.getElementById('adminMenuItemCount').innerText = currentDayData.menuItems.length;
+
+      if (currentDayData.menuItems.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">當日無品項，請從範本帶入或貼上解析</p>`;
+        return;
+      }
+
+      container.innerHTML = currentDayData.menuItems.map((item, index) => `
+        <div class="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center gap-2 text-xs">
+          <input type="text" value="${item.category || ''}" placeholder="分類" onchange="updateMenuItem(${index}, 'category', this.value)" class="w-16 px-1.5 py-1 border rounded text-slate-600" />
+          <input type="text" value="${item.name}" placeholder="品項名稱" onchange="updateMenuItem(${index}, 'name', this.value)" class="flex-1 px-1.5 py-1 border rounded font-medium" />
+          <span class="text-slate-400">$</span>
+          <input type="number" value="${item.price}" placeholder="價格" onchange="updateMenuItem(${index}, 'price', Number(this.value))" class="w-16 px-1.5 py-1 border rounded font-bold text-slate-700" />
+          <button onclick="removeMenuItem(${index})" class="text-slate-400 hover:text-rose-500 p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function updateMenuItem(index, key, value) {
+      currentDayData.menuItems[index][key] = value;
+      saveDB();
+      renderCategories();
+      renderMenuGrid();
+    }
+
+    function removeMenuItem(index) {
+      currentDayData.menuItems.splice(index, 1);
+      saveDB();
+      renderAll();
+    }
+
+    function addNewBlankMenuItem() {
+      currentDayData.menuItems.push({ id: Date.now().toString(), name: '新餐點', price: 100, category: '主食' });
+      saveDB();
+      renderAll();
+    }
+
+    function renderSummaryStats() {
+      let totalQty = 0;
+      let totalAmount = 0;
+      const itemAgg = {};
+
+      currentDayData.orders.forEach(o => {
+        totalAmount += o.totalAmount;
+        o.items.forEach(i => {
+          totalQty += i.qty;
+          if (!itemAgg[i.name]) itemAgg[i.name] = { qty: 0, price: i.price, notes: [] };
+          itemAgg[i.name].qty += i.qty;
+          if (i.note) itemAgg[i.name].notes.push(`${o.userName}: ${i.note}`);
+        });
+      });
+
+      document.getElementById('statTotalItems').innerText = `${totalQty} 份`;
+      document.getElementById('statTotalAmount').innerText = `$ ${totalAmount}`;
+      document.getElementById('statTotalPeople').innerText = `${currentDayData.orders.length} 人`;
+
+      const summaryContainer = document.getElementById('itemSummaryList');
+      const itemKeys = Object.keys(itemAgg);
+
+      if (itemKeys.length === 0) {
+        summaryContainer.innerHTML = `<p class="text-xs text-slate-400 col-span-full text-center py-2">當日暫無訂單統計</p>`;
+        return;
+      }
+
+      summaryContainer.innerHTML = itemKeys.map(key => {
+        const data = itemAgg[key];
+        return `
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 flex justify-between items-center text-xs">
+            <div>
+              <p class="font-bold text-slate-800">${key}</p>
+              ${data.notes.length > 0 ? `<p class="text-[10px] text-amber-600 mt-0.5">${data.notes.join('; ')}</p>` : ''}
+            </div>
+            <div class="text-right">
+              <span class="text-sm font-extrabold text-orange-600">${data.qty} 份</span>
+              <p class="text-[10px] text-slate-400">共 $${data.qty * data.price}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function copySummaryText() {
+      if (currentDayData.orders.length === 0) {
+        alert('當日尚無訂單！');
+        return;
+      }
+
+      const itemAgg = {};
+      let totalAmount = 0;
+      let totalQty = 0;
+
+      currentDayData.orders.forEach(o => {
+        totalAmount += o.totalAmount;
+        o.items.forEach(i => {
+          totalQty += i.qty;
+          if (!itemAgg[i.name]) itemAgg[i.name] = { qty: 0, notes: [] };
+          itemAgg[i.name].qty += i.qty;
+          if (i.note) itemAgg[i.name].notes.push(`${o.userName}(${i.note})`);
+        });
+      });
+
+      let text = `🍱【${currentDayData.storeInfo.name}】訂餐結算 (${activeDate})\n`;
+      text += `-------------------------\n`;
+      text += `【點餐數量彙總】\n`;
+      
+      Object.keys(itemAgg).forEach(name => {
+        const item = itemAgg[name];
+        text += `• ${name} x ${item.qty}`;
+        if (item.notes.length > 0) text += ` [備註: ${item.notes.join(', ')}]`;
+        text += `\n`;
+      });
+
+      text += `-------------------------\n`;
+      text += `總計：${totalQty} 份 | 總金額：$${totalAmount} 元\n\n`;
+      text += `【個人明細】\n`;
+
+      currentDayData.orders.forEach(o => {
+        const details = o.items.map(i => `${i.name}x${i.qty}`).join(',');
+        text += `${o.userName}：${details} ($${o.totalAmount})\n`;
+      });
+
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('已複製 LINE 統計簡訊至剪貼簿！');
+      }).catch(() => alert('複製失敗，請手動複製。'));
+    }
+
+    function exportToCSV() {
+      if (currentDayData.orders.length === 0) {
+        alert('當日無訂單可匯出！');
+        return;
+      }
+
+      let csv = "\uFEFF";
+      csv += "日期,訂購人,餐點名稱,單價,數量,小計,特殊備註,點餐時間\n";
+
+      currentDayData.orders.forEach(o => {
+        o.items.forEach(i => {
+          const row = [
+            `"${activeDate}"`,
+            `"${o.userName}"`,
+            `"${i.name}"`,
+            i.price,
+            i.qty,
+            i.price * i.qty,
+            `"${i.note || ''}"`,
+            `"${o.time || ''}"`
+          ];
+          csv += row.join(",") + "\n";
+        });
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${activeDate}_${currentDayData.storeInfo.name}_訂餐統計.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('已開始下載 Excel (CSV) 檔');
+    }
+
+    function clearAllOrders() {
+      if (confirm(`確定要清空 ${activeDate} 的所有訂單嗎？`)) {
+        currentDayData.orders = [];
+        saveDB();
+        renderAll();
+        showToast('已清空當日所有訂單');
+      }
+    }
+
+    function scrollToSection(id) {
+      document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
